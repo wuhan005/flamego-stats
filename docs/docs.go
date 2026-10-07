@@ -680,6 +680,7 @@ const docTemplate = `{
                 "failed",
                 "finishedAt",
                 "id",
+                "partial",
                 "removed",
                 "reportedTotal",
                 "skipped",
@@ -692,6 +693,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "error": {
+                    "description": "Error is why the run failed, or why the succeeded run is partial.",
                     "type": "string"
                 },
                 "failed": {
@@ -703,6 +705,10 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "integer"
+                },
+                "partial": {
+                    "description": "Partial means some sources failed, the counts of the run are not comparable with the complete runs.",
+                    "type": "boolean"
                 },
                 "removed": {
                     "type": "integer"

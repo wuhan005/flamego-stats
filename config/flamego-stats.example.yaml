@@ -25,4 +25,8 @@ sync:
   dependents:
     package_id: "" # Empty uses the default package of the repository.
     page_delay: 1s # Delay between the pages to avoid the rate limit of the website.
+  code_search:
+    # The legacy code search ignores the punctuations, so a quoted module path would match nearly all the go.mod files.
+    # The matches are verified by parsing the go.mod. Defaults to "<last element of the module> filename:go.mod".
+    query: ""
   ignore_owners: [] # Exclude the repositories of these users or organizations, e.g. flamego itself.

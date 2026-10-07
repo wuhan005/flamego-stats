@@ -1,6 +1,7 @@
 package conf
 
 import (
+	"path"
 	"strings"
 	"time"
 
@@ -40,6 +41,12 @@ type DependentsConfig struct {
 	PageDelay time.Duration `mapstructure:"page_delay"`
 }
 
+type CodeSearchConfig struct {
+	// Query is the query of the legacy code search, which ignores the punctuations such as . and /.
+	// It defaults to "<the last element of the module> filename:go.mod", e.g. flamego filename:go.mod.
+	Query string `mapstructure:"query"`
+}
+
 var Sync struct {
 	// Repository is the repository to collect the dependents of, in the format of owner/name.
 	Repository string `mapstructure:"repository"`
@@ -52,6 +59,7 @@ var Sync struct {
 	// Sources are where the dependents are discovered from, it defaults to dependents only.
 	Sources    []SyncSource     `mapstructure:"sources"`
 	Dependents DependentsConfig `mapstructure:"dependents"`
+	CodeSearch CodeSearchConfig `mapstructure:"code_search"`
 	// IgnoreOwners are the users or organizations whose repositories are excluded, case-insensitively.
 	IgnoreOwners []string `mapstructure:"ignore_owners"`
 }
@@ -117,6 +125,10 @@ func normalizeSync() error {
 	}
 	if Sync.Dependents.PageDelay <= 0 {
 		Sync.Dependents.PageDelay = time.Second
+	}
+	// The punctuations are ignored, so a quoted module path would match the tokens like "github" and "com" of nearly all the go.mod files.
+	if Sync.CodeSearch.Query == "" {
+		Sync.CodeSearch.Query = path.Base(Sync.Module) + " filename:go.mod"
 	}
 	return nil
 }

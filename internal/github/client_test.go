@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/google/go-github/v92/github"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,10 +16,8 @@ func newTestClient(t *testing.T, handler http.Handler) *Client {
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
 
-	baseURL := server.URL + "/"
-	client, err := newClient("test-token", github.WithURLs(&baseURL, &baseURL))
+	client, err := NewClient("test-token", WithURLs(server.URL+"/", server.URL))
 	require.NoError(t, err)
-	client.webURL = server.URL
 	return client
 }
 
@@ -47,17 +44,30 @@ func TestGetRepositoryVisibility(t *testing.T) {
 }
 
 func TestSearchCodeRepositoriesExcludesPrivate(t *testing.T) {
-	client := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = fmt.Fprint(w, `{"total_count":3,"items":[
-			{"repository":{"full_name":"acme/public","private":false}},
-			{"repository":{"full_name":"acme/secret","private":true}},
-			{"repository":{"full_name":"acme/public","private":false}}
-		]}`)
+	client := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "flamego filename:go.mod", r.URL.Query().Get("q"))
+		switch r.URL.Query().Get("page") {
+		case "1":
+			_, _ = fmt.Fprint(w, `{"total_count":4,"items":[
+				{"path":"go.mod","repository":{"full_name":"acme/public","private":false}},
+				{"path":"go.mod","repository":{"full_name":"acme/secret","private":true}}
+			]}`)
+		case "2":
+			_, _ = fmt.Fprint(w, `{"total_count":4,"items":[
+				{"path":"api/go.mod","repository":{"full_name":"acme/public","private":false}},
+				{"path":"go.mod","repository":{"full_name":"acme/other","private":false}}
+			]}`)
+		default:
+			t.Fatalf("unexpected page %q", r.URL.Query().Get("page"))
+		}
 	}))
 
-	fullNames, err := client.SearchCodeRepositories(context.Background(), `"github.com/flamego/flamego" filename:go.mod`)
+	repos, err := client.SearchCodeRepositories(context.Background(), "flamego filename:go.mod")
 	require.NoError(t, err)
-	require.Equal(t, []string{"acme/public"}, fullNames)
+	require.Equal(t, []*CodeSearchRepository{
+		{FullName: "acme/public", Paths: []string{"go.mod", "api/go.mod"}},
+		{FullName: "acme/other", Paths: []string{"go.mod"}},
+	}, repos)
 }
 
 func TestListDependentsIsAnonymous(t *testing.T) {

@@ -89,12 +89,16 @@ func (s *Syncer) Run(ctx context.Context) error {
 
 func (s *Syncer) run(ctx context.Context, logger *logrus.Entry, seenAt time.Time) (db.SyncRunResult, error) {
 	var result db.SyncRunResult
-	fullNames, reportedTotal, err := s.discover(ctx, logger)
+	candidates, reportedTotal, warnings, err := s.discover(ctx, logger)
 	if err != nil {
 		return result, errors.Wrap(err, "discover")
 	}
 	result.ReportedTotal = reportedTotal
-	result.Discovered = len(fullNames)
+	result.Discovered = len(candidates)
+	if len(warnings) > 0 {
+		result.Partial = true
+		result.Warning = strings.Join(warnings, "; ")
+	}
 
 	var (
 		mu      sync.Mutex
@@ -102,9 +106,9 @@ func (s *Syncer) run(ctx context.Context, logger *logrus.Entry, seenAt time.Time
 	)
 	g, gctx := errgroup.WithContext(ctx)
 	g.SetLimit(conf.Sync.Concurrency)
-	for _, fullName := range fullNames {
+	for _, c := range candidates {
 		g.Go(func() error {
-			outcome := s.syncRepository(gctx, logger.WithField("repository", fullName), fullName, seenAt, func(id int64) bool {
+			outcome := s.syncRepository(gctx, logger.WithField("repository", c.FullName), c, seenAt, func(id int64) bool {
 				mu.Lock()
 				defer mu.Unlock()
 				if _, ok := seenIDs[id]; ok {
@@ -131,6 +135,12 @@ func (s *Syncer) run(ctx context.Context, logger *logrus.Entry, seenAt time.Time
 		return result, err
 	}
 
+	// The repositories of the failed sources are not touched, removing the stale ones would remove them by mistake.
+	if result.Partial {
+		logger.WithField("warning", result.Warning).Warn("Some sources failed, skipped removing the stale repositories")
+		return result, nil
+	}
+
 	// The failed repositories have been touched, so the stale ones are really gone from the dependents.
 	removed, err := db.Repositories.DeleteNotSeenSince(ctx, seenAt)
 	if err != nil {
@@ -140,58 +150,89 @@ func (s *Syncer) run(ctx context.Context, logger *logrus.Entry, seenAt time.Time
 	return result, nil
 }
 
-// discover collects the dependents from the configured sources, and returns the distinct owner/name along with the total shown on the dependents page.
-func (s *Syncer) discover(ctx context.Context, logger *logrus.Entry) (fullNames []string, reportedTotal int, _ error) {
+// candidate is a repository discovered from the sources.
+type candidate struct {
+	FullName string
+	// Dependent means it is listed on the dependents page, otherwise it is collected only if its go.mod requires the module.
+	Dependent bool
+	// GoModPaths are the go.mod files matched by the code search, which are tried before scanning the tree.
+	GoModPaths []string
+}
+
+// discover collects the candidates from the configured sources along with the total shown on the dependents page.
+// The failed sources are returned as the warnings unless all of them fail.
+func (s *Syncer) discover(ctx context.Context, logger *logrus.Entry) (candidates []*candidate, reportedTotal int, warnings []string, _ error) {
 	ignored := make(map[string]struct{}, len(conf.Sync.IgnoreOwners))
 	for _, owner := range conf.Sync.IgnoreOwners {
 		ignored[strings.ToLower(owner)] = struct{}{}
 	}
-	seen := map[string]struct{}{strings.ToLower(conf.Sync.Repository): {}}
-	add := func(names []string) {
-		for _, name := range names {
-			key := strings.ToLower(name)
-			owner, _, _ := strings.Cut(key, "/")
-			if _, ok := ignored[owner]; ok {
-				continue
+	self := strings.ToLower(conf.Sync.Repository)
+	byName := make(map[string]*candidate)
+	add := func(fullName string, dependent bool, goModPaths []string) {
+		key := strings.ToLower(fullName)
+		owner, _, _ := strings.Cut(key, "/")
+		if _, ok := ignored[owner]; ok || key == self {
+			return
+		}
+		c, ok := byName[key]
+		if !ok {
+			c = &candidate{FullName: fullName}
+			byName[key] = c
+			candidates = append(candidates, c)
+		}
+		c.Dependent = c.Dependent || dependent
+		for _, p := range goModPaths {
+			if !slices.Contains(c.GoModPaths, p) {
+				c.GoModPaths = append(c.GoModPaths, p)
 			}
-			if _, ok := seen[key]; ok {
-				continue
-			}
-			seen[key] = struct{}{}
-			fullNames = append(fullNames, name)
 		}
 	}
 
 	for _, source := range conf.Sync.Sources {
+		var err error
 		switch source {
 		case conf.SyncSourceDependents:
-			dependents, err := s.client.ListDependents(ctx, conf.Sync.Repository, github.DependentsOptions{
+			var dependents *github.Dependents
+			dependents, err = s.client.ListDependents(ctx, conf.Sync.Repository, github.DependentsOptions{
 				PackageID: conf.Sync.Dependents.PackageID,
 				PageDelay: conf.Sync.Dependents.PageDelay,
 			})
-			if err != nil {
-				return nil, 0, errors.Wrap(err, "list dependents")
+			if err == nil {
+				reportedTotal = dependents.Total
+				logger.WithFields(logrus.Fields{"count": len(dependents.Repositories), "reported": dependents.Total}).Info("Listed dependents")
+				for _, fullName := range dependents.Repositories {
+					add(fullName, true, nil)
+				}
 			}
-			reportedTotal = dependents.Total
-			logger.WithFields(logrus.Fields{"count": len(dependents.Repositories), "reported": dependents.Total}).Info("Listed dependents")
-			add(dependents.Repositories)
 
 		case conf.SyncSourceCodeSearch:
-			query := fmt.Sprintf("%q filename:go.mod", conf.Sync.Module)
-			names, err := s.client.SearchCodeRepositories(ctx, query)
-			if err != nil {
-				return nil, 0, errors.Wrap(err, "search code")
+			var repos []*github.CodeSearchRepository
+			repos, err = s.client.SearchCodeRepositories(ctx, conf.Sync.CodeSearch.Query)
+			if err == nil {
+				logger.WithFields(logrus.Fields{"count": len(repos), "query": conf.Sync.CodeSearch.Query}).Info("Searched code")
+				for _, repo := range repos {
+					add(repo.FullName, false, repo.Paths)
+				}
 			}
-			logger.WithField("count", len(names)).Info("Searched code")
-			add(names)
+		}
+
+		if err != nil {
+			if ctx.Err() != nil {
+				return nil, 0, nil, ctx.Err()
+			}
+			logger.WithError(err).WithField("source", source).Warn("Failed to discover repositories from the source")
+			warnings = append(warnings, fmt.Sprintf("%s: %v", source, err))
 		}
 	}
 
 	// An empty list likely means the page layout changed or the API misbehaved, continuing would remove all the existing data.
-	if len(fullNames) == 0 {
-		return nil, 0, errors.New("no repositories discovered")
+	if len(candidates) == 0 {
+		if len(warnings) > 0 {
+			return nil, 0, nil, errors.Newf("no repositories discovered: %s", strings.Join(warnings, "; "))
+		}
+		return nil, 0, nil, errors.New("no repositories discovered")
 	}
-	return fullNames, reportedTotal, nil
+	return candidates, reportedTotal, warnings, nil
 }
 
 type outcome int
@@ -203,7 +244,8 @@ const (
 )
 
 // syncRepository fetches and saves a repository, claim deduplicates by GitHub ID since a renamed repository may show up with both names.
-func (s *Syncer) syncRepository(ctx context.Context, logger *logrus.Entry, fullName string, seenAt time.Time, claim func(id int64) bool) outcome {
+func (s *Syncer) syncRepository(ctx context.Context, logger *logrus.Entry, c *candidate, seenAt time.Time, claim func(id int64) bool) outcome {
+	fullName := c.FullName
 	fail := func(err error, message string) outcome {
 		if ctx.Err() != nil {
 			return outcomeFailed
@@ -276,17 +318,22 @@ func (s *Syncer) syncRepository(ctx context.Context, logger *logrus.Entry, fullN
 		record.ModuleMinorVersion = existing.ModuleMinorVersion
 		record.RelatedModules = existing.RelatedModules
 	} else {
-		goModPath, info, err := s.findGoMod(ctx, repo)
+		goModPath, info, err := s.findGoMod(ctx, repo, c.GoModPaths)
 		if err != nil {
 			return fail(err, "Failed to find go.mod")
 		}
-		if info != nil {
+		switch {
+		case info != nil:
 			record.GoModPath = goModPath
 			record.GoVersion = info.GoVersion
 			record.ModuleVersion = info.Version
 			record.ModuleMinorVersion = info.MinorVersion
 			record.RelatedModules = info.RelatedModules
-		} else {
+		case !c.Dependent:
+			// The code search also matches the go.mod files mentioning the module otherwise, e.g. github.com/foo/flamego-bar.
+			logger.Debug("No go.mod requires the module, skipped the code search match")
+			return outcomeSkipped
+		default:
 			logger.Debug("No go.mod requires the module")
 		}
 	}
@@ -297,9 +344,11 @@ func (s *Syncer) syncRepository(ctx context.Context, logger *logrus.Entry, fullN
 	return outcomeSynced
 }
 
-// findGoMod reads the root go.mod first and then the ones in the subdirectories if it does not require the module, info is nil if none is found.
-func (s *Syncer) findGoMod(ctx context.Context, repo *github.Repository) (goModPath string, info *gomod.Info, _ error) {
+// findGoMod tries the root go.mod, the hinted ones and then the ones in the subdirectories until one requires the module, info is nil if none is found.
+func (s *Syncer) findGoMod(ctx context.Context, repo *github.Repository, hints []string) (goModPath string, info *gomod.Info, _ error) {
+	tried := make(map[string]bool)
 	parse := func(filePath string) (*gomod.Info, error) {
+		tried[filePath] = true
 		data, err := s.client.GetFile(ctx, repo.FullName, repo.DefaultBranch, filePath)
 		if err != nil {
 			if errors.Is(err, github.ErrNotFound) {
@@ -315,8 +364,13 @@ func (s *Syncer) findGoMod(ctx context.Context, repo *github.Repository) (goModP
 		return info, nil
 	}
 
-	if info, err := parse("go.mod"); err != nil || info != nil {
-		return "go.mod", info, err
+	for _, p := range append([]string{"go.mod"}, hints...) {
+		if tried[p] || isVendored(p) {
+			continue
+		}
+		if info, err := parse(p); err != nil || info != nil {
+			return p, info, err
+		}
 	}
 
 	paths, err := s.client.FindFiles(ctx, repo.FullName, repo.DefaultBranch, "go.mod")
@@ -327,6 +381,9 @@ func (s *Syncer) findGoMod(ctx context.Context, repo *github.Repository) (goModP
 		return "", nil, errors.Wrap(err, "find go.mod")
 	}
 	for _, p := range goModCandidates(paths, path.Base(conf.Sync.Module)) {
+		if tried[p] {
+			continue
+		}
 		if info, err := parse(p); err != nil || info != nil {
 			return p, info, err
 		}

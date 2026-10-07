@@ -112,7 +112,8 @@ const languageItems = computed<DonutItem[]>(() => {
 
 const trendPoints = computed(() =>
   (syncRuns.data.value ?? [])
-    .filter((run) => run.status === 'succeeded' && run.finishedAt)
+    // The partial runs miss the repositories of the failed sources.
+    .filter((run) => run.status === 'succeeded' && !run.partial && run.finishedAt)
     .reverse()
     .map((run) => ({ time: run.finishedAt as string, value: run.discovered })),
 )

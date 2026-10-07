@@ -21,34 +21,54 @@ var ErrNotFound = errors.New("not found")
 type Client struct {
 	api  *github.Client
 	http *http.Client
-	// webURL is the base URL of the GitHub website, which is replaced in tests.
+	// webURL is the base URL of the GitHub website without the trailing slash.
 	webURL string
 	// authenticated is required by the Code Search API.
 	authenticated bool
 }
 
-// NewClient creates a GitHub client, the requests are anonymous if token is empty.
-func NewClient(token string) (*Client, error) {
-	return newClient(token)
+type options struct {
+	apiURL string
+	webURL string
 }
 
-func newClient(token string, extra ...github.ClientOptionsFunc) (*Client, error) {
+// Option configures the Client.
+type Option func(*options)
+
+// WithURLs sets the base URLs of the REST API (with the trailing slash) and the website, e.g. for GitHub Enterprise.
+func WithURLs(apiURL, webURL string) Option {
+	return func(o *options) {
+		o.apiURL = apiURL
+		o.webURL = strings.TrimSuffix(webURL, "/")
+	}
+}
+
+// NewClient creates a GitHub client, the requests are anonymous if token is empty.
+func NewClient(token string, opts ...Option) (*Client, error) {
+	o := options{webURL: "https://github.com"}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
 	httpClient := &http.Client{Timeout: 30 * time.Second}
-	opts := append([]github.ClientOptionsFunc{
+	apiOpts := []github.ClientOptionsFunc{
 		github.WithHTTPClient(httpClient),
 		github.WithUserAgent(userAgent),
-	}, extra...)
-	if token != "" {
-		opts = append(opts, github.WithAuthToken(token))
 	}
-	api, err := github.NewClient(opts...)
+	if o.apiURL != "" {
+		apiOpts = append(apiOpts, github.WithURLs(&o.apiURL, &o.apiURL))
+	}
+	if token != "" {
+		apiOpts = append(apiOpts, github.WithAuthToken(token))
+	}
+	api, err := github.NewClient(apiOpts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "new client")
 	}
 	return &Client{
 		api:           api,
 		http:          httpClient,
-		webURL:        "https://github.com",
+		webURL:        o.webURL,
 		authenticated: token != "",
 	}, nil
 }
@@ -185,16 +205,23 @@ func (c *Client) FindFiles(ctx context.Context, fullName, ref, fileName string) 
 // codeSearchLimit is the maximum number of results a Code Search API query can page through.
 const codeSearchLimit = 1000
 
-// SearchCodeRepositories searches code by the Code Search API, and returns the distinct owner/name of the first 1000 results at most.
-func (c *Client) SearchCodeRepositories(ctx context.Context, query string) ([]string, error) {
+// CodeSearchRepository is a repository with the files matching the code search.
+type CodeSearchRepository struct {
+	FullName string
+	// Paths are the paths of the matched files in the repository.
+	Paths []string
+}
+
+// SearchCodeRepositories searches code by the Code Search API, and returns the matched repositories of the first 1000 results at most.
+func (c *Client) SearchCodeRepositories(ctx context.Context, query string) ([]*CodeSearchRepository, error) {
 	if !c.authenticated {
 		return nil, errors.New("code search requires an authentication token")
 	}
 
-	seen := make(map[string]struct{})
-	var fullNames []string
-	opts := &github.SearchOptions{ListOptions: github.ListOptions{PerPage: 100}}
-	for fetched := 0; fetched < codeSearchLimit; {
+	byName := make(map[string]*CodeSearchRepository)
+	var repos []*CodeSearchRepository
+	opts := &github.SearchOptions{ListOptions: github.ListOptions{Page: 1, PerPage: 100}}
+	for fetched := 0; fetched < codeSearchLimit; opts.Page++ {
 		result, err := retry(ctx, func() (*github.CodeSearchResult, *github.Response, error) {
 			return c.api.Search.Code(ctx, query, opts)
 		})
@@ -202,26 +229,29 @@ func (c *Client) SearchCodeRepositories(ctx context.Context, query string) ([]st
 			return nil, errors.Wrapf(err, "search page %d", opts.Page)
 		}
 		for _, item := range result.CodeResults {
-			// The results include the private repositories accessible to the token.
-			if !isPublic(item.GetRepository()) {
-				continue
-			}
 			fullName := item.GetRepository().GetFullName()
-			key := strings.ToLower(fullName)
-			if _, ok := seen[key]; ok || fullName == "" {
+			// The results include the private repositories accessible to the token.
+			if !isPublic(item.GetRepository()) || fullName == "" {
 				continue
 			}
-			seen[key] = struct{}{}
-			fullNames = append(fullNames, fullName)
+			key := strings.ToLower(fullName)
+			repo, ok := byName[key]
+			if !ok {
+				repo = &CodeSearchRepository{FullName: fullName}
+				byName[key] = repo
+				repos = append(repos, repo)
+			}
+			if p := item.GetPath(); p != "" && !slices.Contains(repo.Paths, p) {
+				repo.Paths = append(repo.Paths, p)
+			}
 		}
 
 		fetched += len(result.CodeResults)
 		if len(result.CodeResults) == 0 || fetched >= result.GetTotal() {
 			break
 		}
-		opts.Page = max(opts.Page, 1) + 1
 	}
-	return fullNames, nil
+	return repos, nil
 }
 
 // isPublic reports whether the repository is public, the visibility is absent in some responses like the code search.

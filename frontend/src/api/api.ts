@@ -80,10 +80,13 @@ export interface Repository {
 
 export interface SyncRun {
   discovered: number;
+  /** Error is why the run failed, or why the succeeded run is partial. */
   error: string;
   failed: number;
   finishedAt?: string | null;
   id: number;
+  /** Partial means some sources failed, the counts of the run are not comparable with the complete runs. */
+  partial: boolean;
   removed: number;
   reportedTotal: number;
   skipped: number;

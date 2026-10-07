@@ -187,6 +187,7 @@ definitions:
       discovered:
         type: integer
       error:
+        description: Error is why the run failed, or why the succeeded run is partial.
         type: string
       failed:
         type: integer
@@ -195,6 +196,10 @@ definitions:
         x-nullable: true
       id:
         type: integer
+      partial:
+        description: Partial means some sources failed, the counts of the run are
+          not comparable with the complete runs.
+        type: boolean
       removed:
         type: integer
       reportedTotal:
@@ -217,6 +222,7 @@ definitions:
     - failed
     - finishedAt
     - id
+    - partial
     - removed
     - reportedTotal
     - skipped

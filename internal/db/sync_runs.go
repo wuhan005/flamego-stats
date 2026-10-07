@@ -56,6 +56,10 @@ type SyncRunResult struct {
 	Failed int
 	// Removed is the number of repositories removed because they are no longer discovered.
 	Removed int
+	// Partial means some sources failed, so the stale repositories are not removed in the run.
+	Partial bool
+	// Warning is why the run is partial, which is saved as the error of the succeeded run.
+	Warning string `gorm:"-"`
 }
 
 // SyncRun is a synchronization run of the worker.
@@ -65,9 +69,10 @@ type SyncRun struct {
 	StartedAt     time.Time     `gorm:"index"`
 	FinishedAt    *time.Time
 	SyncRunResult `gorm:"embedded"`
-	Error         string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	// Error is why the run failed, or why the succeeded run is partial.
+	Error     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type syncRuns struct {
@@ -86,7 +91,7 @@ func (db *syncRuns) Start(ctx context.Context) (*SyncRun, error) {
 }
 
 func (db *syncRuns) Finish(ctx context.Context, runID int64, result SyncRunResult, err error) error {
-	status, message := SyncRunStatusSucceeded, ""
+	status, message := SyncRunStatusSucceeded, result.Warning
 	if err != nil {
 		status, message = SyncRunStatusFailed, err.Error()
 	}
@@ -99,6 +104,7 @@ func (db *syncRuns) Finish(ctx context.Context, runID int64, result SyncRunResul
 		"skipped":        result.Skipped,
 		"failed":         result.Failed,
 		"removed":        result.Removed,
+		"partial":        result.Partial,
 		"error":          message,
 	}).Error
 }

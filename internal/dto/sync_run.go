@@ -18,7 +18,10 @@ type SyncRun struct {
 	Skipped       int        `json:"skipped"`
 	Failed        int        `json:"failed"`
 	Removed       int        `json:"removed"`
-	Error         string     `json:"error"`
+	// Partial means some sources failed, the counts of the run are not comparable with the complete runs.
+	Partial bool `json:"partial"`
+	// Error is why the run failed, or why the succeeded run is partial.
+	Error string `json:"error"`
 } // @name SyncRun
 
 func ToSyncRuns(runs []*db.SyncRun) []*SyncRun {
@@ -35,6 +38,7 @@ func ToSyncRuns(runs []*db.SyncRun) []*SyncRun {
 			Skipped:       run.Skipped,
 			Failed:        run.Failed,
 			Removed:       run.Removed,
+			Partial:       run.Partial,
 			Error:         run.Error,
 		})
 	}
