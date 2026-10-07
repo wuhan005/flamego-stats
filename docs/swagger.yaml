@@ -1,0 +1,511 @@
+basePath: /_
+definitions:
+  CountItem:
+    properties:
+      count:
+        type: integer
+      name:
+        type: string
+    required:
+    - count
+    - name
+    type: object
+  ListRepositoriesResp:
+    properties:
+      repositories:
+        items:
+          $ref: '#/definitions/Repository'
+        type: array
+      total:
+        type: integer
+    required:
+    - repositories
+    - total
+    type: object
+  Overview:
+    properties:
+      forks:
+        type: integer
+      lastSyncedAt:
+        description: LastSyncedAt is when the latest succeeded synchronization finished,
+          it is null if never synchronized.
+        type: string
+        x-nullable: true
+      module:
+        type: string
+      owners:
+        type: integer
+      reportedTotal:
+        description: ReportedTotal is the approximate number shown in "Used by" on
+          GitHub, including the forked and private repositories.
+        type: integer
+      repositories:
+        type: integer
+      repository:
+        description: Repository and Module are the repository and the Go module to
+          collect the dependents of.
+        type: string
+      resolved:
+        description: Resolved is the number of dependents whose module version is
+          resolved.
+        type: integer
+      stars:
+        type: integer
+    required:
+    - forks
+    - lastSyncedAt
+    - module
+    - owners
+    - reportedTotal
+    - repositories
+    - repository
+    - resolved
+    - stars
+    type: object
+  OwnerBrief:
+    properties:
+      avatarURL:
+        type: string
+      htmlURL:
+        type: string
+      login:
+        type: string
+      type:
+        enum:
+        - User
+        - Organization
+        type: string
+    required:
+    - avatarURL
+    - htmlURL
+    - login
+    - type
+    type: object
+  OwnerRank:
+    properties:
+      avatarURL:
+        type: string
+      htmlURL:
+        type: string
+      login:
+        type: string
+      repositories:
+        type: integer
+      stars:
+        type: integer
+      type:
+        enum:
+        - User
+        - Organization
+        type: string
+    required:
+    - avatarURL
+    - htmlURL
+    - login
+    - repositories
+    - stars
+    - type
+    type: object
+  Repository:
+    properties:
+      archived:
+        type: boolean
+      createdAt:
+        type: string
+      description:
+        type: string
+      fork:
+        type: boolean
+      forks:
+        type: integer
+      fullName:
+        type: string
+      goModPath:
+        description: GoModPath is the path of the go.mod requiring the module. If
+          not found, it is empty along with GoVersion and ModuleVersion.
+        type: string
+      goVersion:
+        type: string
+      homepage:
+        type: string
+      htmlURL:
+        type: string
+      language:
+        type: string
+      license:
+        type: string
+      moduleVersion:
+        type: string
+      name:
+        type: string
+      openIssues:
+        type: integer
+      owner:
+        $ref: '#/definitions/OwnerBrief'
+      pushedAt:
+        type: string
+      relatedModules:
+        items:
+          type: string
+        type: array
+      stars:
+        type: integer
+      syncedAt:
+        type: string
+      topics:
+        items:
+          type: string
+        type: array
+      watchers:
+        type: integer
+    required:
+    - archived
+    - createdAt
+    - description
+    - fork
+    - forks
+    - fullName
+    - goModPath
+    - goVersion
+    - homepage
+    - htmlURL
+    - language
+    - license
+    - moduleVersion
+    - name
+    - openIssues
+    - owner
+    - pushedAt
+    - relatedModules
+    - stars
+    - syncedAt
+    - topics
+    - watchers
+    type: object
+  SyncRun:
+    properties:
+      discovered:
+        type: integer
+      error:
+        type: string
+      failed:
+        type: integer
+      finishedAt:
+        type: string
+        x-nullable: true
+      id:
+        type: integer
+      removed:
+        type: integer
+      reportedTotal:
+        type: integer
+      skipped:
+        type: integer
+      startedAt:
+        type: string
+      status:
+        enum:
+        - running
+        - succeeded
+        - failed
+        type: string
+      synced:
+        type: integer
+    required:
+    - discovered
+    - error
+    - failed
+    - finishedAt
+    - id
+    - removed
+    - reportedTotal
+    - skipped
+    - startedAt
+    - status
+    - synced
+    type: object
+info:
+  contact: {}
+  title: Flamego Stats API
+  version: "1.0"
+paths:
+  /overview:
+    get:
+      description: The totals of the dependents, owners, stars and forks, along with
+        the latest succeeded synchronization.
+      operationId: getOverview
+      parameters:
+      - description: Include the forked repositories, defaults to false
+        in: query
+        name: includeForks
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Overview'
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Get the overview
+  /repositories:
+    get:
+      description: List the repositories depending on the module, sort=stars ranks
+        by stars and sort=pushed lists the recently updated.
+      operationId: listRepositories
+      parameters:
+      - description: Page number, starting from 1
+        in: query
+        name: page
+        type: integer
+      - description: Page size, defaults to 20, at most 100
+        in: query
+        name: pageSize
+        type: integer
+      - description: Order of the list, defaults to stars
+        enum:
+        - stars
+        - forks
+        - pushed
+        - created
+        - name
+        in: query
+        name: sort
+        type: string
+      - description: Match the full name and the description
+        in: query
+        name: keyword
+        type: string
+      - description: Filter by the topic
+        in: query
+        name: topic
+        type: string
+      - description: Filter by the primary language
+        in: query
+        name: language
+        type: string
+      - description: Filter by the owner, case-insensitively
+        in: query
+        name: owner
+        type: string
+      - description: Filter by the module version, e.g. v1.9.4
+        in: query
+        name: version
+        type: string
+      - description: Include the forked repositories, defaults to false
+        in: query
+        name: includeForks
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ListRepositoriesResp'
+        "400":
+          description: Invalid sort
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: List the dependents
+  /stats/go-versions:
+    get:
+      description: The MAJOR.MINOR distribution of the go directive in the go.mod
+        of the dependents, in descending version order.
+      operationId: listGoVersions
+      parameters:
+      - description: Include the forked repositories, defaults to false
+        in: query
+        name: includeForks
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/CountItem'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: List the Go versions
+  /stats/languages:
+    get:
+      description: The primary languages ordered by the number of dependents.
+      operationId: listLanguages
+      parameters:
+      - description: Number of items, defaults to 20, at most 100
+        in: query
+        name: limit
+        type: integer
+      - description: Include the forked repositories, defaults to false
+        in: query
+        name: includeForks
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/CountItem'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: List the languages
+  /stats/modules:
+    get:
+      description: The other modules of the same organization (e.g. github.com/flamego/session)
+        used by the dependents, ordered by the number of dependents.
+      operationId: listModules
+      parameters:
+      - description: Number of items, defaults to 20, at most 100
+        in: query
+        name: limit
+        type: integer
+      - description: Include the forked repositories, defaults to false
+        in: query
+        name: includeForks
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/CountItem'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Rank the related modules
+  /stats/owners:
+    get:
+      description: The owners ordered by the number of dependents, then by the total
+        stars.
+      operationId: listTopOwners
+      parameters:
+      - description: Number of items, defaults to 20, at most 100
+        in: query
+        name: limit
+        type: integer
+      - description: Include the forked repositories, defaults to false
+        in: query
+        name: includeForks
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/OwnerRank'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Rank the owners
+  /stats/topics:
+    get:
+      description: The repository topics ordered by the number of dependents.
+      operationId: listTopics
+      parameters:
+      - description: Number of items, defaults to 20, at most 100
+        in: query
+        name: limit
+        type: integer
+      - description: Include the forked repositories, defaults to false
+        in: query
+        name: includeForks
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/CountItem'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: List the topics
+  /stats/versions:
+    get:
+      description: The distribution of the module versions in the go.mod of the dependents,
+        in descending version order.
+      operationId: listVersions
+      parameters:
+      - description: Group by the exact or the minor versions, defaults to exact
+        enum:
+        - exact
+        - minor
+        in: query
+        name: granularity
+        type: string
+      - description: Include the forked repositories, defaults to false
+        in: query
+        name: includeForks
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/CountItem'
+            type: array
+        "400":
+          description: Invalid granularity
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: List the module versions
+  /sync-runs:
+    get:
+      description: The latest synchronization runs, the newest first. The discovered
+        counts chart the trend of the dependents.
+      operationId: listSyncRuns
+      parameters:
+      - description: Number of items, defaults to 20, at most 100
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/SyncRun'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: List the synchronization runs
+swagger: "2.0"

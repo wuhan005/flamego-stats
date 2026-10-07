@@ -1,0 +1,50 @@
+version: 2
+
+project_name: flamego-stats
+
+before:
+  hooks:
+    - pnpm --dir frontend install --frozen-lockfile
+    - pnpm --dir frontend build
+
+builds:
+  - id: flamego-stats-server
+    main: ./cmd/flamego-stats-server
+    binary: flamego-stats-server
+    env: &env
+      - CGO_ENABLED=0
+    goos: &goos
+      - linux
+      - darwin
+      - windows
+    goarch: &goarch
+      - amd64
+      - arm64
+    flags: &flags
+      - -mod=readonly
+      - -trimpath
+    ldflags: &ldflags
+      - -s -w -X github.com/wuhan005/flamego-stats/internal/appconst.BuildCommit={{ .FullCommit }}
+  - id: flamego-stats-worker
+    main: ./cmd/flamego-stats-worker
+    binary: flamego-stats-worker
+    env: *env
+    goos: *goos
+    goarch: *goarch
+    flags: *flags
+    ldflags: *ldflags
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+checksum:
+  name_template: checksums.txt
+
+release:
+  prerelease: auto
+
+changelog:
+  sort: asc

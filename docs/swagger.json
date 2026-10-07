@@ -1,0 +1,725 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "Flamego Stats API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "basePath": "/_",
+    "paths": {
+        "/overview": {
+            "get": {
+                "description": "The totals of the dependents, owners, stars and forks, along with the latest succeeded synchronization.",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get the overview",
+                "operationId": "getOverview",
+                "parameters": [
+                    {
+                        "type": "boolean",
+                        "description": "Include the forked repositories, defaults to false",
+                        "name": "includeForks",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Overview"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/repositories": {
+            "get": {
+                "description": "List the repositories depending on the module, sort=stars ranks by stars and sort=pushed lists the recently updated.",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "List the dependents",
+                "operationId": "listRepositories",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number, starting from 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size, defaults to 20, at most 100",
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "stars",
+                            "forks",
+                            "pushed",
+                            "created",
+                            "name"
+                        ],
+                        "type": "string",
+                        "description": "Order of the list, defaults to stars",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Match the full name and the description",
+                        "name": "keyword",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by the topic",
+                        "name": "topic",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by the primary language",
+                        "name": "language",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by the owner, case-insensitively",
+                        "name": "owner",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by the module version, e.g. v1.9.4",
+                        "name": "version",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include the forked repositories, defaults to false",
+                        "name": "includeForks",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/ListRepositoriesResp"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid sort",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/stats/go-versions": {
+            "get": {
+                "description": "The MAJOR.MINOR distribution of the go directive in the go.mod of the dependents, in descending version order.",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "List the Go versions",
+                "operationId": "listGoVersions",
+                "parameters": [
+                    {
+                        "type": "boolean",
+                        "description": "Include the forked repositories, defaults to false",
+                        "name": "includeForks",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/CountItem"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/stats/languages": {
+            "get": {
+                "description": "The primary languages ordered by the number of dependents.",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "List the languages",
+                "operationId": "listLanguages",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Number of items, defaults to 20, at most 100",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include the forked repositories, defaults to false",
+                        "name": "includeForks",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/CountItem"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/stats/modules": {
+            "get": {
+                "description": "The other modules of the same organization (e.g. github.com/flamego/session) used by the dependents, ordered by the number of dependents.",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Rank the related modules",
+                "operationId": "listModules",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Number of items, defaults to 20, at most 100",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include the forked repositories, defaults to false",
+                        "name": "includeForks",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/CountItem"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/stats/owners": {
+            "get": {
+                "description": "The owners ordered by the number of dependents, then by the total stars.",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Rank the owners",
+                "operationId": "listTopOwners",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Number of items, defaults to 20, at most 100",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include the forked repositories, defaults to false",
+                        "name": "includeForks",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/OwnerRank"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/stats/topics": {
+            "get": {
+                "description": "The repository topics ordered by the number of dependents.",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "List the topics",
+                "operationId": "listTopics",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Number of items, defaults to 20, at most 100",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include the forked repositories, defaults to false",
+                        "name": "includeForks",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/CountItem"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/stats/versions": {
+            "get": {
+                "description": "The distribution of the module versions in the go.mod of the dependents, in descending version order.",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "List the module versions",
+                "operationId": "listVersions",
+                "parameters": [
+                    {
+                        "enum": [
+                            "exact",
+                            "minor"
+                        ],
+                        "type": "string",
+                        "description": "Group by the exact or the minor versions, defaults to exact",
+                        "name": "granularity",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include the forked repositories, defaults to false",
+                        "name": "includeForks",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/CountItem"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid granularity",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/sync-runs": {
+            "get": {
+                "description": "The latest synchronization runs, the newest first. The discovered counts chart the trend of the dependents.",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "List the synchronization runs",
+                "operationId": "listSyncRuns",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Number of items, defaults to 20, at most 100",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/SyncRun"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "CountItem": {
+            "type": "object",
+            "required": [
+                "count",
+                "name"
+            ],
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "ListRepositoriesResp": {
+            "type": "object",
+            "required": [
+                "repositories",
+                "total"
+            ],
+            "properties": {
+                "repositories": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Repository"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "Overview": {
+            "type": "object",
+            "required": [
+                "forks",
+                "lastSyncedAt",
+                "module",
+                "owners",
+                "reportedTotal",
+                "repositories",
+                "repository",
+                "resolved",
+                "stars"
+            ],
+            "properties": {
+                "forks": {
+                    "type": "integer"
+                },
+                "lastSyncedAt": {
+                    "description": "LastSyncedAt is when the latest succeeded synchronization finished, it is null if never synchronized.",
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "module": {
+                    "type": "string"
+                },
+                "owners": {
+                    "type": "integer"
+                },
+                "reportedTotal": {
+                    "description": "ReportedTotal is the approximate number shown in \"Used by\" on GitHub, including the forked and private repositories.",
+                    "type": "integer"
+                },
+                "repositories": {
+                    "type": "integer"
+                },
+                "repository": {
+                    "description": "Repository and Module are the repository and the Go module to collect the dependents of.",
+                    "type": "string"
+                },
+                "resolved": {
+                    "description": "Resolved is the number of dependents whose module version is resolved.",
+                    "type": "integer"
+                },
+                "stars": {
+                    "type": "integer"
+                }
+            }
+        },
+        "OwnerBrief": {
+            "type": "object",
+            "required": [
+                "avatarURL",
+                "htmlURL",
+                "login",
+                "type"
+            ],
+            "properties": {
+                "avatarURL": {
+                    "type": "string"
+                },
+                "htmlURL": {
+                    "type": "string"
+                },
+                "login": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "User",
+                        "Organization"
+                    ]
+                }
+            }
+        },
+        "OwnerRank": {
+            "type": "object",
+            "required": [
+                "avatarURL",
+                "htmlURL",
+                "login",
+                "repositories",
+                "stars",
+                "type"
+            ],
+            "properties": {
+                "avatarURL": {
+                    "type": "string"
+                },
+                "htmlURL": {
+                    "type": "string"
+                },
+                "login": {
+                    "type": "string"
+                },
+                "repositories": {
+                    "type": "integer"
+                },
+                "stars": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "User",
+                        "Organization"
+                    ]
+                }
+            }
+        },
+        "Repository": {
+            "type": "object",
+            "required": [
+                "archived",
+                "createdAt",
+                "description",
+                "fork",
+                "forks",
+                "fullName",
+                "goModPath",
+                "goVersion",
+                "homepage",
+                "htmlURL",
+                "language",
+                "license",
+                "moduleVersion",
+                "name",
+                "openIssues",
+                "owner",
+                "pushedAt",
+                "relatedModules",
+                "stars",
+                "syncedAt",
+                "topics",
+                "watchers"
+            ],
+            "properties": {
+                "archived": {
+                    "type": "boolean"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "fork": {
+                    "type": "boolean"
+                },
+                "forks": {
+                    "type": "integer"
+                },
+                "fullName": {
+                    "type": "string"
+                },
+                "goModPath": {
+                    "description": "GoModPath is the path of the go.mod requiring the module. If not found, it is empty along with GoVersion and ModuleVersion.",
+                    "type": "string"
+                },
+                "goVersion": {
+                    "type": "string"
+                },
+                "homepage": {
+                    "type": "string"
+                },
+                "htmlURL": {
+                    "type": "string"
+                },
+                "language": {
+                    "type": "string"
+                },
+                "license": {
+                    "type": "string"
+                },
+                "moduleVersion": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "openIssues": {
+                    "type": "integer"
+                },
+                "owner": {
+                    "$ref": "#/definitions/OwnerBrief"
+                },
+                "pushedAt": {
+                    "type": "string"
+                },
+                "relatedModules": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "stars": {
+                    "type": "integer"
+                },
+                "syncedAt": {
+                    "type": "string"
+                },
+                "topics": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "watchers": {
+                    "type": "integer"
+                }
+            }
+        },
+        "SyncRun": {
+            "type": "object",
+            "required": [
+                "discovered",
+                "error",
+                "failed",
+                "finishedAt",
+                "id",
+                "removed",
+                "reportedTotal",
+                "skipped",
+                "startedAt",
+                "status",
+                "synced"
+            ],
+            "properties": {
+                "discovered": {
+                    "type": "integer"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "failed": {
+                    "type": "integer"
+                },
+                "finishedAt": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "removed": {
+                    "type": "integer"
+                },
+                "reportedTotal": {
+                    "type": "integer"
+                },
+                "skipped": {
+                    "type": "integer"
+                },
+                "startedAt": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "running",
+                        "succeeded",
+                        "failed"
+                    ]
+                },
+                "synced": {
+                    "type": "integer"
+                }
+            }
+        }
+    }
+}

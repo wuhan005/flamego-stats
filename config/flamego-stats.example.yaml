@@ -1,0 +1,28 @@
+# Copy to config/flamego-stats.yaml, the server and the worker share the same configuration.
+app:
+  port: 8080
+  shutdown_timeout: 10s # How long to wait for the in-flight requests after signaled.
+
+# Replace the example password before deployment.
+postgres:
+  dsn: "postgres://postgres:change-me@127.0.0.1:5432/flamego_stats?sslmode=disable"
+
+github:
+  # Personal access token, no scope is needed for the public repositories.
+  # The API is limited to 60 requests per hour without it.
+  # The private repositories accessible to the token are never collected.
+  token: ""
+
+sync:
+  repository: flamego/flamego
+  module: github.com/flamego/flamego # Defaults to github.com/<repository>.
+  interval: 6h
+  concurrency: 4 # Repositories fetched concurrently.
+  # dependents: scrape the "Used by" (network/dependents) page.
+  # code_search: search the go.mod files referencing the module by the Code Search API, requires the token, 1000 results at most.
+  sources:
+    - dependents
+  dependents:
+    package_id: "" # Empty uses the default package of the repository.
+    page_delay: 1s # Delay between the pages to avoid the rate limit of the website.
+  ignore_owners: [] # Exclude the repositories of these users or organizations, e.g. flamego itself.
