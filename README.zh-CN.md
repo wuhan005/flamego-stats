@@ -35,3 +35,7 @@ docker compose up -d
 ## 🤝 贡献
 
 欢迎提交 Issue 和 Pull Request。报告问题时请附上复现步骤，每个 PR 尽量只处理一件事。
+
+## ⚖️ 许可证
+
+采用 [MIT 许可证](LICENSE)。

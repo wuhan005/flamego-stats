@@ -35,3 +35,7 @@ Open [http://localhost:8080](http://localhost:8080). The worker syncs data on fi
 ## 🤝 Contributing
 
 Issues and pull requests are welcome. Include steps to reproduce bugs and keep each PR focused on one change.
+
+## ⚖️ License
+
+Licensed under the [MIT License](LICENSE).
