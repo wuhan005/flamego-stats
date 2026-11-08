@@ -182,7 +182,8 @@ const lastSynced = computed(() => {
           <div class="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3">
             <SegmentedControl :model-value="type" :options="typeOptions" @update:model-value="updateQuery({ type: $event })" />
             <SelectMenu
-              class="w-44"
+              class="max-w-56"
+              size="sm"
               :label="t('activity.allRepositories')"
               :model-value="repository"
               :options="repositoryOptions"
