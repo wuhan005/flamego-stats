@@ -32,7 +32,7 @@ const { t } = useI18n()
       </div>
     </header>
 
-    <div class="flex-1 px-5 pb-5" :class="title || $slots.actions ? '' : 'pt-5'">
+    <div class="flex flex-1 flex-col px-5 pb-5" :class="title || $slots.actions ? '' : 'pt-5'">
       <div v-if="loading" class="space-y-3 pt-1">
         <div v-for="i in skeleton" :key="i" class="skeleton h-7" :style="{ width: `${100 - i * 9}%` }" />
       </div>

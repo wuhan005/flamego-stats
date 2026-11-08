@@ -19,7 +19,7 @@ import { useAsync } from '@/composables/useAsync'
 import { usePreferences } from '@/composables/usePreferences'
 import { compactNumber, formatDateTime, formatNumber, percent, relativeTime } from '@/utils/format'
 import { languageColor } from '@/utils/languages'
-import { moduleShortName, moduleURL } from '@/utils/modules'
+import { moduleShortName, moduleURL, shortVersion } from '@/utils/modules'
 
 const { t, locale } = useI18n()
 const { includeForks } = usePreferences()
@@ -75,7 +75,8 @@ const versionItems = computed<BarItem[]>(() => {
     .slice(0, 8)
     .map((item) => ({
       key: item.name,
-      label: item.name,
+      label: shortVersion(item.name),
+      title: item.name,
       value: item.count,
       hint: `${percent(item.count, total)}%`,
       to: granularity.value === 'exact' ? { name: 'repositories', query: { version: item.name } } : undefined,
@@ -138,12 +139,12 @@ const versionOptions = computed(() => [
       <div
         class="pointer-events-none absolute inset-0 [background-image:linear-gradient(to_right,rgb(0_0_0/0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgb(0_0_0/0.04)_1px,transparent_1px)] [background-size:32px_32px] [mask-image:radial-gradient(ellipse_70%_60%_at_50%_0%,black,transparent)] dark:[background-image:linear-gradient(to_right,rgb(255_255_255/0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgb(255_255_255/0.05)_1px,transparent_1px)]"
       />
-      <div class="relative mx-auto max-w-7xl px-6 pt-16 pb-14 sm:pt-20">
+      <div class="relative mx-auto max-w-7xl px-6 pt-16 pb-10 sm:pt-20 sm:pb-14">
         <div class="max-w-3xl">
           <h1 class="text-4xl font-bold tracking-tight sm:text-5xl">
             {{ t('home.titlePrefix') }} <span class="flame-text">Flamego</span>?
           </h1>
-          <p class="mt-4 text-lg leading-relaxed text-gray-600 dark:text-neutral-400">
+          <p class="mt-4 text-lg leading-relaxed text-balance text-gray-600 dark:text-neutral-400">
             <i18n-t keypath="home.subtitle" scope="global">
               <template #module>
                 <code class="font-mono text-[0.9em] text-gray-900 dark:text-gray-100">{{ overview.data.value?.module ?? 'github.com/flamego/flamego' }}</code>
@@ -182,7 +183,7 @@ const versionOptions = computed(() => [
       </div>
     </section>
 
-    <div class="mx-auto grid max-w-7xl gap-6 px-6 pt-10 lg:grid-cols-2">
+    <div class="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-6 pt-8 sm:pt-10 lg:grid-cols-2">
       <PanelCard
         :title="t('home.mostStarred')"
         :description="t('home.mostStarredDesc')"
@@ -231,6 +232,17 @@ const versionOptions = computed(() => [
       </PanelCard>
 
       <PanelCard
+        :title="t('home.middleware')"
+        :description="t('home.middlewareDesc')"
+        :loading="modules.loading.value"
+        :error="modules.error.value"
+        :empty="!moduleItems.length"
+        @retry="modules.reload"
+      >
+        <BarList :items="moduleItems" mono />
+      </PanelCard>
+
+      <PanelCard
         :title="t('home.versions')"
         :description="t('home.versionsDesc')"
         :loading="versions.loading.value"
@@ -242,17 +254,6 @@ const versionOptions = computed(() => [
           <SegmentedControl v-model="granularity" :options="versionOptions" />
         </template>
         <BarList :items="versionItems" mono />
-      </PanelCard>
-
-      <PanelCard
-        :title="t('home.middleware')"
-        :description="t('home.middlewareDesc')"
-        :loading="modules.loading.value"
-        :error="modules.error.value"
-        :empty="!moduleItems.length"
-        @retry="modules.reload"
-      >
-        <BarList :items="moduleItems" mono />
       </PanelCard>
 
       <PanelCard
@@ -274,7 +275,7 @@ const versionOptions = computed(() => [
         :empty="!languageItems.length"
         @retry="languages.reload"
       >
-        <DonutChart :items="languageItems" :total-label="t('common.repositories')" :locale="locale" />
+        <DonutChart class="flex-1" :items="languageItems" :total-label="t('common.repositories')" :locale="locale" />
       </PanelCard>
 
       <PanelCard
@@ -288,7 +289,9 @@ const versionOptions = computed(() => [
         <TopicCloud :topics="topics.data.value ?? []" />
       </PanelCard>
 
+      <!-- 同步不足两次时没有趋势可画，直接隐藏整张卡片。 -->
       <PanelCard
+        v-if="syncRuns.loading.value || syncRuns.error.value || trendPoints.length >= 2"
         class="lg:col-span-2"
         :title="t('home.trend')"
         :description="t('home.trendDesc')"
@@ -297,8 +300,7 @@ const versionOptions = computed(() => [
         :skeleton="3"
         @retry="syncRuns.reload"
       >
-        <TrendChart v-if="trendPoints.length >= 2" :points="trendPoints" :locale="locale" />
-        <p v-else class="py-10 text-center text-sm text-gray-500 dark:text-neutral-400">{{ t('home.trendEmpty') }}</p>
+        <TrendChart :points="trendPoints" :locale="locale" />
       </PanelCard>
     </div>
   </div>

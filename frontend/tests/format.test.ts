@@ -3,7 +3,7 @@ import { test } from 'node:test'
 
 import { compactNumber, percent, relativeTime } from '../src/utils/format.ts'
 import { languageColor } from '../src/utils/languages.ts'
-import { moduleShortName, moduleURL } from '../src/utils/modules.ts'
+import { moduleShortName, moduleURL, shortVersion } from '../src/utils/modules.ts'
 
 test('relativeTime picks the largest unit', () => {
   const now = Date.parse('2026-10-07T12:00:00Z')
@@ -26,6 +26,14 @@ test('moduleURL links the documented middleware to flamego.dev', () => {
   assert.equal(moduleURL('github.com/flamego/session'), 'https://flamego.dev/middleware/session/')
   assert.equal(moduleURL('github.com/flamego/validator'), 'https://github.com/flamego/validator')
   assert.equal(moduleURL('github.com/flamego/template/v2'), 'https://flamego.dev/middleware/template/')
+})
+
+test('shortVersion abbreviates the pseudo-versions only', () => {
+  assert.equal(shortVersion('v0.0.0-20211002062834-f84595763ddb'), 'v0.0.0-…-f845957')
+  assert.equal(shortVersion('v1.9.8-0.20240101000000-0123456789ab'), 'v1.9.8-…-0123456')
+  assert.equal(shortVersion('v1.10.0-rc.1.0.20240101000000-0123456789ab'), 'v1.10.0-…-0123456')
+  assert.equal(shortVersion('v1.9.7'), 'v1.9.7')
+  assert.equal(shortVersion('v1.10.0-rc.1'), 'v1.10.0-rc.1')
 })
 
 test('languageColor is stable for the unknown languages', () => {

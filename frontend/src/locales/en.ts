@@ -62,7 +62,6 @@ export default {
     topicsDesc: 'What people build with Flamego.',
     trend: 'Dependents over time',
     trendDesc: 'The number of dependents discovered in each synchronization.',
-    trendEmpty: 'The trend shows up after two synchronizations.',
     getStarted: 'Get started with Flamego',
   },
   repos: {

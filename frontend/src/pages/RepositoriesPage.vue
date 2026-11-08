@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronLeft, ChevronRight, Search, X } from '@lucide/vue'
+import { ChevronDown, ChevronLeft, ChevronRight, Search, X } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter, type LocationQuery } from 'vue-router'
@@ -81,7 +81,7 @@ function filterLabel(key: Filter) {
 </script>
 
 <template>
-  <div class="mx-auto max-w-5xl px-6 pt-12">
+  <div class="mx-auto max-w-7xl px-6 pt-12">
     <header>
       <h1 class="text-3xl font-bold tracking-tight">{{ t('repos.title') }}</h1>
       <p class="mt-2 text-gray-600 dark:text-neutral-400">
@@ -91,7 +91,7 @@ function filterLabel(key: Filter) {
     </header>
 
     <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-      <label class="relative flex-1">
+      <label class="relative flex-1 sm:max-w-md">
         <Search class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-gray-400" />
         <input
           v-model="search"
@@ -100,14 +100,17 @@ function filterLabel(key: Filter) {
           class="w-full rounded-lg border-0 bg-black/5 py-2 pr-3 pl-9 text-sm transition-colors outline-none placeholder:text-gray-500 focus:bg-white focus:ring-2 focus:ring-primary-500/50 dark:bg-gray-50/10 dark:placeholder:text-neutral-500 dark:focus:bg-dark"
         />
       </label>
-      <div class="flex items-center gap-4">
-        <select
-          :value="sort"
-          class="focus-ring rounded-lg border border-gray-200 bg-white py-1.5 pr-8 pl-3 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-          @change="updateQuery({ sort: ($event.target as HTMLSelectElement).value })"
-        >
-          <option v-for="s in SORTS" :key="s" :value="s">{{ t(`repos.sort.${s}`) }}</option>
-        </select>
+      <div class="flex items-center gap-4 sm:ml-auto">
+        <label class="relative">
+          <select
+            :value="sort"
+            class="appearance-none rounded-lg border-0 bg-black/5 py-2 pr-8 pl-3 text-sm transition-colors outline-none focus:ring-2 focus:ring-primary-500/50 dark:bg-gray-50/10"
+            @change="updateQuery({ sort: ($event.target as HTMLSelectElement).value })"
+          >
+            <option v-for="s in SORTS" :key="s" :value="s">{{ t(`repos.sort.${s}`) }}</option>
+          </select>
+          <ChevronDown class="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-gray-400" />
+        </label>
         <ToggleSwitch v-model="includeForks" :label="t('common.includeForks')" />
       </div>
     </div>

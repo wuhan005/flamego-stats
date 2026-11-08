@@ -1,48 +1,51 @@
 <script setup lang="ts">
 import { Archive, GitFork, Star } from '@lucide/vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { Repository } from '@/api/stats'
+import OwnerAvatar from '@/components/common/OwnerAvatar.vue'
 import { compactNumber, relativeTime } from '@/utils/format'
 import { languageColor } from '@/utils/languages'
+import { shortVersion } from '@/utils/modules'
 
-withDefaults(defineProps<{ repo: Repository; compact?: boolean }>(), { compact: false })
+const props = withDefaults(defineProps<{ repo: Repository; compact?: boolean }>(), { compact: false })
 
 const { t, locale } = useI18n()
+const version = computed(() => shortVersion(props.repo.moduleVersion ?? ''))
+/** 只有缩写过的伪版本号允许继续截断，正式版本号始终完整显示。 */
+const pseudoVersion = computed(() => version.value !== props.repo.moduleVersion)
 </script>
 
 <template>
   <article class="group flex gap-3 py-3.5">
     <RouterLink :to="{ name: 'repositories', query: { owner: repo.owner.login } }" class="shrink-0" :title="repo.owner.login">
-      <img
-        :src="`${repo.owner.avatarURL}${repo.owner.avatarURL.includes('?') ? '&' : '?'}s=80`"
-        :alt="repo.owner.login"
-        loading="lazy"
-        class="size-9 bg-gray-100 ring-1 ring-black/5 dark:bg-neutral-800 dark:ring-white/10"
-        :class="repo.owner.type === 'Organization' ? 'rounded-lg' : 'rounded-full'"
-      />
+      <OwnerAvatar :owner="repo.owner" :size="80" class="size-9" />
     </RouterLink>
 
     <div class="min-w-0 flex-1">
-      <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <a :href="repo.htmlURL" target="_blank" rel="noopener" class="min-w-0 truncate text-[15px] hover:underline">
-          <span class="text-gray-500 dark:text-neutral-400">{{ repo.owner.login }} /</span>
-          <span class="font-semibold"> {{ repo.name }}</span>
+      <div class="flex items-center gap-2">
+        <!-- 空间不足时依次截断 owner、伪版本号，最后才截断仓库名。 -->
+        <a :href="repo.htmlURL" target="_blank" rel="noopener" class="flex min-w-0 text-[15px] whitespace-nowrap hover:underline">
+          <span class="min-w-[3ch] shrink-[100] truncate text-gray-500 dark:text-neutral-400">{{ repo.owner.login }}</span>
+          <span class="mx-1 text-gray-500 dark:text-neutral-400">/</span>
+          <span class="min-w-0 truncate font-semibold">{{ repo.name }}</span>
         </a>
-        <span v-if="repo.fork" class="chip py-0! text-[11px]"><GitFork class="size-3" />{{ t('common.fork') }}</span>
+        <span v-if="repo.fork" class="chip shrink-0 py-0! text-[11px]"><GitFork class="size-3" /><span class="max-sm:sr-only">{{ t('common.fork') }}</span></span>
         <span
           v-if="repo.archived"
-          class="chip border-amber-300/60! bg-amber-50! py-0! text-[11px] text-amber-700! dark:border-amber-500/30! dark:bg-amber-500/10! dark:text-amber-400!"
+          class="chip shrink-0 border-amber-300/60! bg-amber-50! py-0! text-[11px] text-amber-700! dark:border-amber-500/30! dark:bg-amber-500/10! dark:text-amber-400!"
         >
-          <Archive class="size-3" />{{ t('common.archived') }}
+          <Archive class="size-3" /><span class="max-sm:sr-only">{{ t('common.archived') }}</span>
         </span>
         <RouterLink
           v-if="repo.moduleVersion"
           :to="{ name: 'repositories', query: { version: repo.moduleVersion } }"
           class="badge-mono hover:text-primary-600 dark:hover:text-primary-400"
-          :title="t('repos.goMod', { path: repo.goModPath })"
+          :class="pseudoVersion ? 'min-w-[7ch] shrink-[10]' : 'shrink-0'"
+          :title="`${repo.moduleVersion} · ${t('repos.goMod', { path: repo.goModPath })}`"
         >
-          {{ repo.moduleVersion }}
+          <span class="truncate">{{ version }}</span>
         </RouterLink>
       </div>
 

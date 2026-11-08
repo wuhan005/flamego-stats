@@ -46,7 +46,7 @@ const center = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-col items-center gap-6 sm:flex-row sm:items-center">
+  <div class="flex flex-col items-center justify-center gap-6 sm:flex-row sm:items-center">
     <div class="relative size-44 shrink-0">
       <svg viewBox="0 0 100 100" class="size-full -rotate-90">
         <circle cx="50" cy="50" :r="RADIUS" fill="none" class="stroke-gray-100 dark:stroke-neutral-800" stroke-width="10" />

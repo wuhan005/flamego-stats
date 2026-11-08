@@ -64,7 +64,6 @@ const zhCN: typeof en = {
     topicsDesc: '大家用 Flamego 构建了什么。',
     trend: '依赖仓库数变化',
     trendDesc: '每次同步发现的依赖仓库数。',
-    trendEmpty: '同步两次后会显示趋势。',
     getStarted: '开始使用 Flamego',
   },
   repos: {

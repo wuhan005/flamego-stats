@@ -24,6 +24,14 @@ export function moduleShortName(path: string): string {
   return name.replace(/\/v\d+$/, '')
 }
 
+const PSEUDO_VERSION = /^(v\d+\.\d+\.\d+)-(?:.+\.)?\d{14}-([0-9a-f]{12})$/
+
+/** 缩写 Go 伪版本号，如 v0.0.0-20211002062834-f84595763ddb 缩写为 v0.0.0-…-f845957，其余版本原样返回。 */
+export function shortVersion(version: string): string {
+  const match = PSEUDO_VERSION.exec(version)
+  return match ? `${match[1]}-…-${match[2].slice(0, 7)}` : version
+}
+
 /** Returns the documentation URL of the module, or its source repository. */
 export function moduleURL(path: string): string {
   const name = moduleShortName(path)

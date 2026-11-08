@@ -4,6 +4,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { OwnerRank } from '@/api/stats'
+import OwnerAvatar from '@/components/common/OwnerAvatar.vue'
 import { compactNumber } from '@/utils/format'
 
 const props = defineProps<{ owners: OwnerRank[] }>()
@@ -25,13 +26,7 @@ const max = computed(() => Math.max(1, ...props.owners.map((o) => o.repositories
         >
           {{ index + 1 }}
         </span>
-        <img
-          :src="`${owner.avatarURL}${owner.avatarURL.includes('?') ? '&' : '?'}s=64`"
-          :alt="owner.login"
-          loading="lazy"
-          class="size-7 bg-gray-100 ring-1 ring-black/5 dark:bg-neutral-800 dark:ring-white/10"
-          :class="owner.type === 'Organization' ? 'rounded-md' : 'rounded-full'"
-        />
+        <OwnerAvatar :owner="owner" :size="64" class="size-7 shrink-0" />
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-1.5 text-sm">
             <span class="truncate font-medium">{{ owner.login }}</span>
