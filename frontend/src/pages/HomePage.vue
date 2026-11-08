@@ -289,7 +289,7 @@ const versionOptions = computed(() => [
         <TopicCloud :topics="topics.data.value ?? []" />
       </PanelCard>
 
-      <!-- 同步不足两次时没有趋势可画，直接隐藏整张卡片。 -->
+      <!-- There is no trend to draw before two synchronizations, so the panel is hidden. -->
       <PanelCard
         v-if="syncRuns.loading.value || syncRuns.error.value || trendPoints.length >= 2"
         class="lg:col-span-2"

@@ -12,6 +12,7 @@ Collects data from public GitHub repositories on a schedule and shows how Flameg
 - Flamego versions, Go versions, middleware, languages, and topics.
 - Repository search, filters, and sorting, with an option to include forks.
 - Trends in the number of dependent repositories.
+- Activity of the Flamego organization: commits, pull requests, issues, and releases.
 - English and Chinese interface with light and dark themes.
 
 ## 🚀 Deployment
@@ -30,7 +31,7 @@ Edit `config/flamego-stats.yaml`: set the host in `postgres.dsn` to `postgres` a
 docker compose up -d
 ```
 
-Open [http://localhost:8080](http://localhost:8080). The worker syncs data on first startup, then every 6 hours by default. See the [example configuration](config/flamego-stats.example.yaml) for all options.
+Open [http://localhost:8080](http://localhost:8080). The worker syncs data on first startup, then every 6 hours by default, and the activity every hour. See the [example configuration](config/flamego-stats.example.yaml) for all options.
 
 ## 🤝 Contributing
 

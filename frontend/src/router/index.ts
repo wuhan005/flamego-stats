@@ -5,6 +5,7 @@ const router = createRouter({
   routes: [
     { path: '/', name: 'home', component: () => import('@/pages/HomePage.vue') },
     { path: '/repositories', name: 'repositories', component: () => import('@/pages/RepositoriesPage.vue') },
+    { path: '/activity', name: 'activity', component: () => import('@/pages/ActivityPage.vue') },
     { path: '/:pathMatch(.*)*', redirect: { name: 'home' } },
   ],
   scrollBehavior: (_to, _from, saved) => saved ?? { top: 0 },

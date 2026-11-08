@@ -30,3 +30,10 @@ sync:
     # The matches are verified by parsing the go.mod. Defaults to "<last element of the module> filename:go.mod".
     query: ""
   ignore_owners: [] # Exclude the repositories of these users or organizations, e.g. flamego itself.
+
+# The commits, pull requests, issues and releases of the public repositories of the organization.
+# A run takes 1 to 3 requests per repository, so set github.token for the organizations with many repositories.
+activity:
+  organization: "" # Defaults to the owner of sync.repository.
+  interval: 1h
+  retention: 2160h # 90 days, the older activities are neither collected nor kept.

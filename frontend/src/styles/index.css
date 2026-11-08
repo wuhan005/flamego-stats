@@ -80,6 +80,11 @@
   @apply inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs text-gray-700 transition-colors dark:border-neutral-800 dark:bg-neutral-800/60 dark:text-neutral-300;
 }
 
+/* A chip calling attention to the state, e.g. archived or pre-release. */
+@utility chip-warning {
+  @apply inline-flex items-center gap-1 rounded-full border border-amber-300/60 bg-amber-50 px-2.5 py-0.5 text-xs text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400;
+}
+
 @utility chip-interactive {
   @apply chip hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 dark:hover:border-primary-700 dark:hover:bg-primary-500/10 dark:hover:text-primary-300;
 }

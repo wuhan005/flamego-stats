@@ -38,7 +38,7 @@ func Init() (*gorm.DB, error) {
 	}
 
 	tables := []interface{}{
-		&Repository{}, &SyncRun{},
+		&Repository{}, &SyncRun{}, &ActivityRepository{}, &Activity{},
 	}
 
 	// Serialize startup DDL across the server and the worker. A transaction releases the advisory
@@ -61,6 +61,8 @@ const (
 	AdvisoryLockMigrate int64 = 0x666c616d65676f
 	// AdvisoryLockSync ensures only one worker synchronizes at a time.
 	AdvisoryLockSync int64 = 0x666c616d65676f + 1
+	// AdvisoryLockActivity ensures only one worker synchronizes the activities at a time.
+	AdvisoryLockActivity int64 = 0x666c616d65676f + 2
 )
 
 // SetDatabaseStore sets the database table store.
@@ -68,4 +70,6 @@ func SetDatabaseStore(db *gorm.DB) {
 	Repositories = NewRepositoriesStore(db)
 	SyncRuns = NewSyncRunsStore(db)
 	Stats = NewStatsStore(db)
+	ActivityRepositories = NewActivityRepositoriesStore(db)
+	Activities = NewActivitiesStore(db)
 }

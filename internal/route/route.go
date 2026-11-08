@@ -39,6 +39,8 @@ func New(opts Options) *flamego.Flame {
 			f.Get("/modules", api.Stats.Modules)
 		})
 		f.Get("/sync-runs", api.SyncRun.List)
+		f.Get("/activities", api.Activity.List)
+		f.Get("/activities/summary", api.Activity.Summary)
 	})
 
 	f.Group("/-", func() {

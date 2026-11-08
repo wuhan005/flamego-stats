@@ -118,7 +118,10 @@ func (c *Client) GetRepository(ctx context.Context, fullName string) (*Repositor
 	if err != nil {
 		return nil, wrapNotFound(err)
 	}
+	return newRepository(repo), nil
+}
 
+func newRepository(repo *github.Repository) *Repository {
 	return &Repository{
 		ID:             repo.GetID(),
 		OwnerID:        repo.GetOwner().GetID(),
@@ -144,7 +147,7 @@ func (c *Client) GetRepository(ctx context.Context, fullName string) (*Repositor
 		CreatedAt:      repo.GetCreatedAt().Time,
 		UpdatedAt:      repo.GetUpdatedAt().Time,
 		PushedAt:       repo.GetPushedAt().Time,
-	}, nil
+	}
 }
 
 // GetFile returns the content of filePath at ref of the repository.

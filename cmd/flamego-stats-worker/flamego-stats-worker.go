@@ -5,6 +5,8 @@ import (
 	"flag"
 	"os"
 	"os/signal"
+	"slices"
+	"sync"
 	"syscall"
 	"time"
 
@@ -21,6 +23,7 @@ import (
 func main() {
 	configFilePath := flag.String("config", "./config/flamego-stats.yaml", "path to the configuration file")
 	once := flag.Bool("once", false, "run the synchronization once and exit, e.g. for cron jobs")
+	only := flag.String("job", "", "run only the job, dependents or activities, all of them if empty")
 	flag.Parse()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -48,56 +51,91 @@ func main() {
 	}
 	s := syncer.New(gormDB, client)
 	logrus.WithFields(logrus.Fields{
-		"commit":     appconst.BuildCommit,
-		"repository": conf.Sync.Repository,
-		"module":     conf.Sync.Module,
+		"commit":       appconst.BuildCommit,
+		"repository":   conf.Sync.Repository,
+		"module":       conf.Sync.Module,
+		"organization": conf.Activity.Organization,
 	}).Info("Worker started")
 
+	jobs := []*job{
+		{name: "dependents", interval: conf.Sync.Interval, run: s.Run, untilNext: untilNextRun},
+		{name: "activities", interval: conf.Activity.Interval, run: s.SyncActivities, untilNext: untilNextActivitySync},
+	}
+	if *only != "" {
+		jobs = slices.DeleteFunc(jobs, func(j *job) bool { return j.name != *only })
+		if len(jobs) == 0 {
+			logrus.Fatalf("Unknown job %q", *only)
+		}
+	}
 	if *once {
-		if err := s.Run(ctx); err != nil {
-			logrus.WithError(err).Fatal("Failed to synchronize")
+		for _, j := range jobs {
+			if err := j.run(ctx); err != nil {
+				logrus.WithError(err).WithField("job", j.name).Fatal("Failed to synchronize")
+			}
 		}
 		return
 	}
 
+	var wg sync.WaitGroup
+	for _, j := range jobs {
+		wg.Go(func() { j.schedule(ctx) })
+	}
+	wg.Wait()
+	logrus.Info("Shutting down")
+}
+
+// job is a synchronization run periodically.
+type job struct {
+	name     string
+	interval time.Duration
+	run      func(ctx context.Context) error
+	// untilNext returns the wait until the next run based on the last run saved, so restarting the worker does not trigger a run immediately.
+	untilNext func(ctx context.Context) (time.Duration, error)
+}
+
+// schedule runs the job at the interval until ctx is canceled.
+func (j *job) schedule(ctx context.Context) {
+	logger := logrus.WithField("job", j.name)
 	for {
-		wait, err := untilNextRun(ctx)
+		wait, err := j.untilNext(ctx)
 		if err != nil {
-			logrus.WithError(err).Error("Failed to schedule the next synchronization")
+			logger.WithError(err).Error("Failed to schedule the next synchronization")
 			wait = time.Minute
 		}
 		if wait > 0 {
-			logrus.WithField("at", time.Now().Add(wait).Format(time.RFC3339)).Info("Waiting for the next synchronization")
+			logger.WithField("at", time.Now().Add(wait).Format(time.RFC3339)).Info("Waiting for the next synchronization")
 		}
-
-		timer := time.NewTimer(wait)
-		select {
-		case <-ctx.Done():
-			timer.Stop()
-			logrus.Info("Shutting down")
+		if err := sleep(ctx, wait); err != nil {
 			return
-		case <-timer.C:
 		}
 
-		if err := s.Run(ctx); err != nil {
+		if err := j.run(ctx); err != nil {
 			if ctx.Err() != nil {
-				logrus.Info("Shutting down")
 				return
 			}
 			if errors.Is(err, syncer.ErrLocked) {
-				logrus.Info("Another worker is synchronizing, skipped")
+				logger.Info("Another worker is synchronizing, skipped")
 			} else {
-				logrus.WithError(err).Error("Failed to synchronize")
+				logger.WithError(err).Error("Failed to synchronize")
 			}
 			// Retry in at most 30 minutes, not to drain the GitHub quota.
-			if err := sleep(ctx, min(conf.Sync.Interval, 30*time.Minute)); err != nil {
+			if err := sleep(ctx, min(j.interval, 30*time.Minute)); err != nil {
 				return
 			}
 		}
 	}
 }
 
-// untilNextRun returns the wait until the next run based on the start time of the latest succeeded run, so restarting the worker does not trigger a run immediately.
+// untilNextActivitySync returns the wait until the next run based on the latest cursor of the repositories.
+func untilNextActivitySync(ctx context.Context) (time.Duration, error) {
+	syncedAt, err := db.ActivityRepositories.LatestSyncedAt(ctx)
+	if err != nil || syncedAt == nil {
+		return 0, err
+	}
+	return max(time.Until(syncedAt.Add(conf.Activity.Interval)), 0), nil
+}
+
+// untilNextRun returns the wait until the next run based on the start time of the latest succeeded run.
 func untilNextRun(ctx context.Context) (time.Duration, error) {
 	run, err := db.SyncRuns.GetLatestSucceeded(ctx)
 	if err != nil {

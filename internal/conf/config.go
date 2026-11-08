@@ -64,6 +64,15 @@ var Sync struct {
 	IgnoreOwners []string `mapstructure:"ignore_owners"`
 }
 
+var Activity struct {
+	// Organization is the GitHub organization whose public repositories are tracked, it defaults to the owner of sync.repository.
+	Organization string `mapstructure:"organization"`
+	// Interval is the interval between two runs, it defaults to 1h.
+	Interval time.Duration `mapstructure:"interval"`
+	// Retention is how far back the activities are collected and kept, it defaults to 2160h (90 days).
+	Retention time.Duration `mapstructure:"retention"`
+}
+
 func Init(configFilePath string) error {
 	v := viper.New()
 	v.SetConfigFile(configFilePath)
@@ -90,7 +99,32 @@ func Init(configFilePath string) error {
 	if err := v.UnmarshalKey("sync", &Sync); err != nil {
 		return errors.Wrap(err, "parse sync")
 	}
-	return normalizeSync()
+	if err := normalizeSync(); err != nil {
+		return err
+	}
+	if err := v.UnmarshalKey("activity", &Activity); err != nil {
+		return errors.Wrap(err, "parse activity")
+	}
+	return normalizeActivity()
+}
+
+func normalizeActivity() error {
+	if Activity.Organization == "" {
+		Activity.Organization, _, _ = strings.Cut(Sync.Repository, "/")
+	}
+	if Activity.Interval <= 0 {
+		Activity.Interval = time.Hour
+	}
+	if Activity.Interval < time.Minute {
+		return errors.New("activity.interval must be at least 1m")
+	}
+	if Activity.Retention <= 0 {
+		Activity.Retention = 90 * 24 * time.Hour
+	}
+	if Activity.Retention < 24*time.Hour {
+		return errors.New("activity.retention must be at least 24h")
+	}
+	return nil
 }
 
 func normalizeSync() error {

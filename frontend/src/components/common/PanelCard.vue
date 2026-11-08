@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { CircleAlert, Inbox } from '@lucide/vue'
+import { computed, useSlots } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     title?: string
     description?: string
@@ -18,21 +19,26 @@ withDefaults(
 defineEmits<{ retry: [] }>()
 
 const { t } = useI18n()
+const slots = useSlots()
+const hasHeader = computed(() => Boolean(props.title || slots.header || slots.actions))
 </script>
 
 <template>
   <section class="surface flex flex-col">
-    <header v-if="title || $slots.actions" class="flex items-start justify-between gap-4 px-5 pt-5 pb-4">
-      <div class="min-w-0">
-        <h2 class="text-base font-semibold tracking-tight">{{ title }}</h2>
-        <p v-if="description" class="mt-0.5 text-sm text-gray-500 dark:text-neutral-400">{{ description }}</p>
-      </div>
+    <header v-if="hasHeader" class="flex items-start justify-between gap-4 px-5 pt-5 pb-4">
+      <!-- The header slot replaces the title, e.g. with the tabs. -->
+      <slot name="header">
+        <div class="min-w-0">
+          <h2 class="text-base font-semibold tracking-tight">{{ title }}</h2>
+          <p v-if="description" class="mt-0.5 text-sm text-gray-500 dark:text-neutral-400">{{ description }}</p>
+        </div>
+      </slot>
       <div v-if="$slots.actions" class="shrink-0">
         <slot name="actions" />
       </div>
     </header>
 
-    <div class="flex flex-1 flex-col px-5 pb-5" :class="title || $slots.actions ? '' : 'pt-5'">
+    <div class="flex flex-1 flex-col px-5 pb-5" :class="hasHeader ? '' : 'pt-5'">
       <div v-if="loading" class="space-y-3 pt-1">
         <div v-for="i in skeleton" :key="i" class="skeleton h-7" :style="{ width: `${100 - i * 9}%` }" />
       </div>

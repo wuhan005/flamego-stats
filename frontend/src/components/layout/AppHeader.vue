@@ -30,6 +30,7 @@ function toggleLocale() {
 const navLinks = computed(() => [
   { to: { name: 'home' }, label: t('nav.overview') },
   { to: { name: 'repositories' }, label: t('nav.repositories') },
+  { to: { name: 'activity' }, label: t('nav.activity') },
 ])
 </script>
 

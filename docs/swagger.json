@@ -7,6 +7,118 @@
     },
     "basePath": "/_",
     "paths": {
+        "/activities": {
+            "get": {
+                "description": "The commits, pull requests, issues and releases of the repositories of the organization, the newest first.\nWithout the type, the commits squash-merged from the pull requests are folded into the merged pull requests.",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "List the activities",
+                "operationId": "listActivities",
+                "parameters": [
+                    {
+                        "enum": [
+                            "commit",
+                            "pull_request",
+                            "issue",
+                            "release"
+                        ],
+                        "type": "string",
+                        "description": "Type of the activities, all of them if empty",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by the repository name, case-insensitively",
+                        "name": "repository",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Exclude the activities of the GitHub Apps, defaults to false",
+                        "name": "excludeBots",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "The nextCursor of the previous page",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of items, defaults to 20, at most 100",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/ListActivitiesResp"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid type or cursor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/activities/summary": {
+            "get": {
+                "description": "The counts of the last 30 days and the 30 days before, the daily counts of the last 13 weeks, the repositories, the top contributors and the latest releases.",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Summarize the activities",
+                "operationId": "getActivitySummary",
+                "parameters": [
+                    {
+                        "type": "boolean",
+                        "description": "Exclude the activities of the GitHub Apps, defaults to false",
+                        "name": "excludeBots",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "IANA time zone of the daily counts, e.g. Asia/Shanghai, defaults to UTC",
+                        "name": "tz",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/ActivitySummary"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid tz",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/overview": {
             "get": {
                 "description": "The totals of the dependents, owners, stars and forks, along with the latest succeeded synchronization.",
@@ -419,6 +531,243 @@
         }
     },
     "definitions": {
+        "Activity": {
+            "type": "object",
+            "required": [
+                "action",
+                "actor",
+                "draft",
+                "htmlURL",
+                "id",
+                "number",
+                "occurredAt",
+                "prerelease",
+                "repository",
+                "sha",
+                "tag",
+                "title",
+                "type"
+            ],
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": [
+                        "committed",
+                        "opened",
+                        "merged",
+                        "closed",
+                        "published"
+                    ]
+                },
+                "actor": {
+                    "$ref": "#/definitions/Actor"
+                },
+                "draft": {
+                    "type": "boolean"
+                },
+                "htmlURL": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "number": {
+                    "description": "Number is the number of the pull request or the issue. For a commit, it is the pull request squash-merged as it, or 0.",
+                    "type": "integer"
+                },
+                "occurredAt": {
+                    "type": "string"
+                },
+                "prerelease": {
+                    "type": "boolean"
+                },
+                "repository": {
+                    "$ref": "#/definitions/ActivityRepositoryBrief"
+                },
+                "sha": {
+                    "description": "SHA is the hash of the commit, Tag is the tag name of the release.",
+                    "type": "string"
+                },
+                "tag": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "commit",
+                        "pull_request",
+                        "issue",
+                        "release"
+                    ]
+                }
+            }
+        },
+        "ActivityCounts": {
+            "type": "object",
+            "required": [
+                "closedIssues",
+                "commits",
+                "mergedPullRequests",
+                "openedIssues",
+                "openedPullRequests",
+                "releases"
+            ],
+            "properties": {
+                "closedIssues": {
+                    "type": "integer"
+                },
+                "commits": {
+                    "type": "integer"
+                },
+                "mergedPullRequests": {
+                    "type": "integer"
+                },
+                "openedIssues": {
+                    "type": "integer"
+                },
+                "openedPullRequests": {
+                    "type": "integer"
+                },
+                "releases": {
+                    "type": "integer"
+                }
+            }
+        },
+        "ActivityRepositoryBrief": {
+            "type": "object",
+            "required": [
+                "htmlURL",
+                "name"
+            ],
+            "properties": {
+                "htmlURL": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "ActivitySummary": {
+            "type": "object",
+            "required": [
+                "contributors",
+                "current",
+                "daily",
+                "days",
+                "lastSyncedAt",
+                "organization",
+                "previous",
+                "releases",
+                "repositories"
+            ],
+            "properties": {
+                "contributors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Contributor"
+                    }
+                },
+                "current": {
+                    "$ref": "#/definitions/ActivityCounts"
+                },
+                "daily": {
+                    "description": "Daily is every day of the recent weeks, the oldest first and today the last.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/DailyCount"
+                    }
+                },
+                "days": {
+                    "description": "Days is the length of the period of Current, Repositories and Contributors, which ends now.",
+                    "type": "integer"
+                },
+                "lastSyncedAt": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "organization": {
+                    "type": "string"
+                },
+                "previous": {
+                    "description": "Previous is the counts of the period of the same length before Current.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ActivityCounts"
+                        }
+                    ]
+                },
+                "releases": {
+                    "description": "Releases are the latest releases.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Activity"
+                    }
+                },
+                "repositories": {
+                    "description": "Repositories are all the tracked repositories, the most active first.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/RepositoryActivity"
+                    }
+                }
+            }
+        },
+        "Actor": {
+            "type": "object",
+            "required": [
+                "avatarURL",
+                "bot",
+                "htmlURL",
+                "login"
+            ],
+            "properties": {
+                "avatarURL": {
+                    "type": "string"
+                },
+                "bot": {
+                    "type": "boolean"
+                },
+                "htmlURL": {
+                    "type": "string"
+                },
+                "login": {
+                    "description": "Login is the name in the commit if the commit author is not linked to any account, AvatarURL and HTMLURL are empty then.",
+                    "type": "string"
+                }
+            }
+        },
+        "Contributor": {
+            "type": "object",
+            "required": [
+                "avatarURL",
+                "bot",
+                "count",
+                "htmlURL",
+                "login"
+            ],
+            "properties": {
+                "avatarURL": {
+                    "type": "string"
+                },
+                "bot": {
+                    "type": "boolean"
+                },
+                "count": {
+                    "type": "integer"
+                },
+                "htmlURL": {
+                    "type": "string"
+                },
+                "login": {
+                    "description": "Login is the name in the commit if the commit author is not linked to any account, AvatarURL and HTMLURL are empty then.",
+                    "type": "string"
+                }
+            }
+        },
         "CountItem": {
             "type": "object",
             "required": [
@@ -430,6 +779,41 @@
                     "type": "integer"
                 },
                 "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "DailyCount": {
+            "type": "object",
+            "required": [
+                "count",
+                "date"
+            ],
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "date": {
+                    "description": "Date is in the format of 2006-01-02 in the requested time zone.",
+                    "type": "string"
+                }
+            }
+        },
+        "ListActivitiesResp": {
+            "type": "object",
+            "required": [
+                "activities",
+                "nextCursor"
+            ],
+            "properties": {
+                "activities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Activity"
+                    }
+                },
+                "nextCursor": {
+                    "description": "NextCursor lists the following activities as the cursor parameter, it is empty at the end of the feed.",
                     "type": "string"
                 }
             }
@@ -661,6 +1045,33 @@
                 },
                 "watchers": {
                     "type": "integer"
+                }
+            }
+        },
+        "RepositoryActivity": {
+            "type": "object",
+            "required": [
+                "archived",
+                "count",
+                "description",
+                "htmlURL",
+                "name"
+            ],
+            "properties": {
+                "archived": {
+                    "type": "boolean"
+                },
+                "count": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "htmlURL": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
                 }
             }
         },

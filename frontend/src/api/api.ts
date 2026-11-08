@@ -10,9 +10,87 @@
  * ---------------------------------------------------------------
  */
 
+export interface Activity {
+  action: "committed" | "opened" | "merged" | "closed" | "published";
+  actor: Actor;
+  draft: boolean;
+  htmlURL: string;
+  id: number;
+  /** Number is the number of the pull request or the issue. For a commit, it is the pull request squash-merged as it, or 0. */
+  number: number;
+  occurredAt: string;
+  prerelease: boolean;
+  repository: ActivityRepositoryBrief;
+  /** SHA is the hash of the commit, Tag is the tag name of the release. */
+  sha: string;
+  tag: string;
+  title: string;
+  type: "commit" | "pull_request" | "issue" | "release";
+}
+
+export interface ActivityCounts {
+  closedIssues: number;
+  commits: number;
+  mergedPullRequests: number;
+  openedIssues: number;
+  openedPullRequests: number;
+  releases: number;
+}
+
+export interface ActivityRepositoryBrief {
+  htmlURL: string;
+  name: string;
+}
+
+export interface ActivitySummary {
+  contributors: Contributor[];
+  current: ActivityCounts;
+  /** Daily is every day of the recent weeks, the oldest first and today the last. */
+  daily: DailyCount[];
+  /** Days is the length of the period of Current, Repositories and Contributors, which ends now. */
+  days: number;
+  lastSyncedAt?: string | null;
+  organization: string;
+  /** Previous is the counts of the period of the same length before Current. */
+  previous: ActivityCounts;
+  /** Releases are the latest releases. */
+  releases: Activity[];
+  /** Repositories are all the tracked repositories, the most active first. */
+  repositories: RepositoryActivity[];
+}
+
+export interface Actor {
+  avatarURL: string;
+  bot: boolean;
+  htmlURL: string;
+  /** Login is the name in the commit if the commit author is not linked to any account, AvatarURL and HTMLURL are empty then. */
+  login: string;
+}
+
+export interface Contributor {
+  avatarURL: string;
+  bot: boolean;
+  count: number;
+  htmlURL: string;
+  /** Login is the name in the commit if the commit author is not linked to any account, AvatarURL and HTMLURL are empty then. */
+  login: string;
+}
+
 export interface CountItem {
   count: number;
   name: string;
+}
+
+export interface DailyCount {
+  count: number;
+  /** Date is in the format of 2006-01-02 in the requested time zone. */
+  date: string;
+}
+
+export interface ListActivitiesResp {
+  activities: Activity[];
+  /** NextCursor lists the following activities as the cursor parameter, it is empty at the end of the feed. */
+  nextCursor: string;
 }
 
 export interface ListRepositoriesResp {
@@ -78,6 +156,14 @@ export interface Repository {
   watchers: number;
 }
 
+export interface RepositoryActivity {
+  archived: boolean;
+  count: number;
+  description: string;
+  htmlURL: string;
+  name: string;
+}
+
 export interface SyncRun {
   discovered: number;
   /** Error is why the run failed, or why the succeeded run is partial. */
@@ -94,6 +180,10 @@ export interface SyncRun {
   status: "running" | "succeeded" | "failed";
   synced: number;
 }
+
+export type ListActivitiesData = ListActivitiesResp;
+
+export type GetActivitySummaryData = ActivitySummary;
 
 export type GetOverviewData = Overview;
 
@@ -297,6 +387,61 @@ export class HttpClient<SecurityDataType = unknown> {
 export class Api<
   SecurityDataType extends unknown,
 > extends HttpClient<SecurityDataType> {
+  activities = {
+    /**
+     * @description The commits, pull requests, issues and releases of the repositories of the organization, the newest first. Without the type, the commits squash-merged from the pull requests are folded into the merged pull requests.
+     *
+     * @name ListActivities
+     * @summary List the activities
+     * @request GET:/activities
+     */
+    listActivities: (
+      query?: {
+        /** Type of the activities, all of them if empty */
+        type?: "commit" | "pull_request" | "issue" | "release";
+        /** Filter by the repository name, case-insensitively */
+        repository?: string;
+        /** Exclude the activities of the GitHub Apps, defaults to false */
+        excludeBots?: boolean;
+        /** The nextCursor of the previous page */
+        cursor?: string;
+        /** Number of items, defaults to 20, at most 100 */
+        limit?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<ListActivitiesData, string>({
+        path: `/activities`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description The counts of the last 30 days and the 30 days before, the daily counts of the last 13 weeks, the repositories, the top contributors and the latest releases.
+     *
+     * @name GetActivitySummary
+     * @summary Summarize the activities
+     * @request GET:/activities/summary
+     */
+    getActivitySummary: (
+      query?: {
+        /** Exclude the activities of the GitHub Apps, defaults to false */
+        excludeBots?: boolean;
+        /** IANA time zone of the daily counts, e.g. Asia/Shanghai, defaults to UTC */
+        tz?: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<GetActivitySummaryData, string>({
+        path: `/activities/summary`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
+  };
   overview = {
     /**
      * @description The totals of the dependents, owners, stars and forks, along with the latest succeeded synchronization.

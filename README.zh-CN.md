@@ -12,6 +12,7 @@
 - Flamego 版本、Go 版本、中间件、语言和 Topic 分布。
 - 仓库搜索、筛选和排序，可选择是否包含 fork。
 - 依赖仓库数变化趋势。
+- Flamego 组织动态：提交、Pull Request、Issue 和发布。
 - 中英文界面，支持浅色和深色主题。
 
 ## 🚀 部署
@@ -30,7 +31,7 @@ cp config/flamego-stats.example.yaml config/flamego-stats.yaml
 docker compose up -d
 ```
 
-打开 [http://localhost:8080](http://localhost:8080)。worker 首次启动后会同步数据，之后默认每 6 小时更新一次。完整配置见 [示例文件](config/flamego-stats.example.yaml)。
+打开 [http://localhost:8080](http://localhost:8080)。worker 首次启动后会同步数据，之后默认每 6 小时更新一次，组织动态每小时更新一次。完整配置见 [示例文件](config/flamego-stats.example.yaml)。
 
 ## 🤝 贡献
 

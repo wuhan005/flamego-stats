@@ -1,5 +1,183 @@
 basePath: /_
 definitions:
+  Activity:
+    properties:
+      action:
+        enum:
+        - committed
+        - opened
+        - merged
+        - closed
+        - published
+        type: string
+      actor:
+        $ref: '#/definitions/Actor'
+      draft:
+        type: boolean
+      htmlURL:
+        type: string
+      id:
+        type: integer
+      number:
+        description: Number is the number of the pull request or the issue. For a
+          commit, it is the pull request squash-merged as it, or 0.
+        type: integer
+      occurredAt:
+        type: string
+      prerelease:
+        type: boolean
+      repository:
+        $ref: '#/definitions/ActivityRepositoryBrief'
+      sha:
+        description: SHA is the hash of the commit, Tag is the tag name of the release.
+        type: string
+      tag:
+        type: string
+      title:
+        type: string
+      type:
+        enum:
+        - commit
+        - pull_request
+        - issue
+        - release
+        type: string
+    required:
+    - action
+    - actor
+    - draft
+    - htmlURL
+    - id
+    - number
+    - occurredAt
+    - prerelease
+    - repository
+    - sha
+    - tag
+    - title
+    - type
+    type: object
+  ActivityCounts:
+    properties:
+      closedIssues:
+        type: integer
+      commits:
+        type: integer
+      mergedPullRequests:
+        type: integer
+      openedIssues:
+        type: integer
+      openedPullRequests:
+        type: integer
+      releases:
+        type: integer
+    required:
+    - closedIssues
+    - commits
+    - mergedPullRequests
+    - openedIssues
+    - openedPullRequests
+    - releases
+    type: object
+  ActivityRepositoryBrief:
+    properties:
+      htmlURL:
+        type: string
+      name:
+        type: string
+    required:
+    - htmlURL
+    - name
+    type: object
+  ActivitySummary:
+    properties:
+      contributors:
+        items:
+          $ref: '#/definitions/Contributor'
+        type: array
+      current:
+        $ref: '#/definitions/ActivityCounts'
+      daily:
+        description: Daily is every day of the recent weeks, the oldest first and
+          today the last.
+        items:
+          $ref: '#/definitions/DailyCount'
+        type: array
+      days:
+        description: Days is the length of the period of Current, Repositories and
+          Contributors, which ends now.
+        type: integer
+      lastSyncedAt:
+        type: string
+        x-nullable: true
+      organization:
+        type: string
+      previous:
+        allOf:
+        - $ref: '#/definitions/ActivityCounts'
+        description: Previous is the counts of the period of the same length before
+          Current.
+      releases:
+        description: Releases are the latest releases.
+        items:
+          $ref: '#/definitions/Activity'
+        type: array
+      repositories:
+        description: Repositories are all the tracked repositories, the most active
+          first.
+        items:
+          $ref: '#/definitions/RepositoryActivity'
+        type: array
+    required:
+    - contributors
+    - current
+    - daily
+    - days
+    - lastSyncedAt
+    - organization
+    - previous
+    - releases
+    - repositories
+    type: object
+  Actor:
+    properties:
+      avatarURL:
+        type: string
+      bot:
+        type: boolean
+      htmlURL:
+        type: string
+      login:
+        description: Login is the name in the commit if the commit author is not linked
+          to any account, AvatarURL and HTMLURL are empty then.
+        type: string
+    required:
+    - avatarURL
+    - bot
+    - htmlURL
+    - login
+    type: object
+  Contributor:
+    properties:
+      avatarURL:
+        type: string
+      bot:
+        type: boolean
+      count:
+        type: integer
+      htmlURL:
+        type: string
+      login:
+        description: Login is the name in the commit if the commit author is not linked
+          to any account, AvatarURL and HTMLURL are empty then.
+        type: string
+    required:
+    - avatarURL
+    - bot
+    - count
+    - htmlURL
+    - login
+    type: object
   CountItem:
     properties:
       count:
@@ -9,6 +187,31 @@ definitions:
     required:
     - count
     - name
+    type: object
+  DailyCount:
+    properties:
+      count:
+        type: integer
+      date:
+        description: Date is in the format of 2006-01-02 in the requested time zone.
+        type: string
+    required:
+    - count
+    - date
+    type: object
+  ListActivitiesResp:
+    properties:
+      activities:
+        items:
+          $ref: '#/definitions/Activity'
+        type: array
+      nextCursor:
+        description: NextCursor lists the following activities as the cursor parameter,
+          it is empty at the end of the feed.
+        type: string
+    required:
+    - activities
+    - nextCursor
     type: object
   ListRepositoriesResp:
     properties:
@@ -182,6 +385,25 @@ definitions:
     - topics
     - watchers
     type: object
+  RepositoryActivity:
+    properties:
+      archived:
+        type: boolean
+      count:
+        type: integer
+      description:
+        type: string
+      htmlURL:
+        type: string
+      name:
+        type: string
+    required:
+    - archived
+    - count
+    - description
+    - htmlURL
+    - name
+    type: object
   SyncRun:
     properties:
       discovered:
@@ -235,6 +457,86 @@ info:
   title: Flamego Stats API
   version: "1.0"
 paths:
+  /activities:
+    get:
+      description: |-
+        The commits, pull requests, issues and releases of the repositories of the organization, the newest first.
+        Without the type, the commits squash-merged from the pull requests are folded into the merged pull requests.
+      operationId: listActivities
+      parameters:
+      - description: Type of the activities, all of them if empty
+        enum:
+        - commit
+        - pull_request
+        - issue
+        - release
+        in: query
+        name: type
+        type: string
+      - description: Filter by the repository name, case-insensitively
+        in: query
+        name: repository
+        type: string
+      - description: Exclude the activities of the GitHub Apps, defaults to false
+        in: query
+        name: excludeBots
+        type: boolean
+      - description: The nextCursor of the previous page
+        in: query
+        name: cursor
+        type: string
+      - description: Number of items, defaults to 20, at most 100
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ListActivitiesResp'
+        "400":
+          description: Invalid type or cursor
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: List the activities
+  /activities/summary:
+    get:
+      description: The counts of the last 30 days and the 30 days before, the daily
+        counts of the last 13 weeks, the repositories, the top contributors and the
+        latest releases.
+      operationId: getActivitySummary
+      parameters:
+      - description: Exclude the activities of the GitHub Apps, defaults to false
+        in: query
+        name: excludeBots
+        type: boolean
+      - description: IANA time zone of the daily counts, e.g. Asia/Shanghai, defaults
+          to UTC
+        in: query
+        name: tz
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ActivitySummary'
+        "400":
+          description: Invalid tz
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Summarize the activities
   /overview:
     get:
       description: The totals of the dependents, owners, stars and forks, along with

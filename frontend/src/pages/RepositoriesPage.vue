@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ChevronDown, ChevronLeft, ChevronRight, Search, X } from '@lucide/vue'
+import { ChevronLeft, ChevronRight, Search, X } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter, type LocationQuery } from 'vue-router'
 
 import { statsApi, type RepositorySort } from '@/api/stats'
 import PanelCard from '@/components/common/PanelCard.vue'
+import SelectMenu from '@/components/common/SelectMenu.vue'
 import ToggleSwitch from '@/components/common/ToggleSwitch.vue'
 import RepoRow from '@/components/repo/RepoRow.vue'
 import { useAsync } from '@/composables/useAsync'
@@ -101,16 +102,11 @@ function filterLabel(key: Filter) {
         />
       </label>
       <div class="flex items-center gap-4 sm:ml-auto">
-        <label class="relative">
-          <select
-            :value="sort"
-            class="appearance-none rounded-lg border-0 bg-black/5 py-2 pr-8 pl-3 text-sm transition-colors outline-none focus:ring-2 focus:ring-primary-500/50 dark:bg-gray-50/10"
-            @change="updateQuery({ sort: ($event.target as HTMLSelectElement).value })"
-          >
-            <option v-for="s in SORTS" :key="s" :value="s">{{ t(`repos.sort.${s}`) }}</option>
-          </select>
-          <ChevronDown class="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-gray-400" />
-        </label>
+        <SelectMenu
+          :model-value="sort"
+          :options="SORTS.map((s) => ({ value: s, label: t(`repos.sort.${s}`) }))"
+          @update:model-value="updateQuery({ sort: $event })"
+        />
         <ToggleSwitch v-model="includeForks" :label="t('common.includeForks')" />
       </div>
     </div>

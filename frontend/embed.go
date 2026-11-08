@@ -42,7 +42,7 @@ func Handler() http.Handler {
 // isAppRoute reports whether the path is a Vue Router page that serves index.html.
 func isAppRoute(path string) bool {
 	switch path {
-	case "/repositories", "/repositories/":
+	case "/repositories", "/repositories/", "/activity", "/activity/":
 		return true
 	}
 	return false

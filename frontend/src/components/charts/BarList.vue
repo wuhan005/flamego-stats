@@ -12,7 +12,7 @@ export interface BarItem {
   href?: string
   /** Shown after the value, e.g. the percentage. */
   hint?: string
-  /** 悬停提示，默认为 label。 */
+  /** Shown on hover, defaults to the label. */
   title?: string
 }
 
@@ -33,7 +33,7 @@ function linkOf(item: BarItem) {
 </script>
 
 <template>
-  <!-- 各行共用同一套列宽（subgrid），数值列宽度不同也不影响条形长度的比例。 -->
+  <!-- The rows share the columns by subgrid, so the bars stay proportional whatever the width of the values. -->
   <ul class="grid grid-cols-[minmax(0,1fr)_auto] gap-y-1.5">
     <li v-for="(item, index) in items" :key="item.key" class="col-span-2 grid grid-cols-subgrid">
       <component
@@ -42,7 +42,7 @@ function linkOf(item: BarItem) {
         class="group focus-ring col-span-2 grid h-8 grid-cols-subgrid items-center gap-x-3 rounded-md text-sm"
         :class="item.to || item.href ? 'cursor-pointer' : ''"
       >
-        <!-- 宽度取比例与标签宽度的较大值，标签过长时在整列宽度内截断。 -->
+        <!-- The bar is at least as wide as its label, and a long label is truncated within the column. -->
         <div
           class="relative flex h-full w-max max-w-full items-center rounded-md px-2.5 transition-[min-width] duration-500"
           :style="{ minWidth: `${(item.value / max) * 100}%` }"
